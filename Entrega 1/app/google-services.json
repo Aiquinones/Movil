@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "440183370689",
+    "firebase_url": "https://entrega-1-9a3e8.firebaseio.com",
+    "project_id": "entrega-1-9a3e8",
+    "storage_bucket": "entrega-1-9a3e8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:440183370689:android:5fa495c2341ad92c",
+        "android_client_info": {
+          "package_name": "com.example.cano.entrega1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "440183370689-he02ggncgdt44m95c75htchqrvbsgq5i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cano.entrega1",
+            "certificate_hash": "24753baa1cc5b530401974b73c00c432f6629b16"
+          }
+        },
+        {
+          "client_id": "440183370689-7292co2uvep3amlec8noe5rc0io2tr70.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtvt_BlMQBLfPGEfOENbItNELqCFAjCs8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "440183370689-7292co2uvep3amlec8noe5rc0io2tr70.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
