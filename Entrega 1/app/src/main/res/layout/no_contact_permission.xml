@@ -14,10 +14,10 @@
         android:text="@string/add_contacts"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintTop_toBottomOf="@+id/no_contact_permission_msg" />
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/no_contact_permission_msg"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/permission_rationale"

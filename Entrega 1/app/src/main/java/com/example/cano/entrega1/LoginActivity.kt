@@ -25,12 +25,15 @@ import java.util.ArrayList
 import android.Manifest.permission.READ_CONTACTS
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
+import com.example.cano.entrega1.R.id.password
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseUser
 
 import kotlinx.android.synthetic.main.activity_login.*
+import org.jetbrains.anko.toast
 
 /**
  * A login screen that offers login via email/password.
@@ -49,7 +52,6 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
         setContentView(R.layout.activity_login)
         // Set up the login form.
         //
-        populateAutoComplete()
         password.setOnEditorActionListener(TextView.OnEditorActionListener { _, id, _ ->
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin()
@@ -64,45 +66,7 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
 
     override fun onStart() {
         super.onStart()
-        var currentUser : FirebaseUser? = mAuth!!.currentUser
         // updateUI(currentUser);
-    }
-
-    private fun populateAutoComplete() {
-        if (!mayRequestContacts()) {
-            return
-        }
-
-        loaderManager.initLoader(0, null, this)
-    }
-
-    private fun mayRequestContacts(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true
-        }
-        if (checkSelfPermission(READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            return true
-        }
-        if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(email, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
-                    .setAction(android.R.string.ok,
-                            { requestPermissions(arrayOf(READ_CONTACTS), REQUEST_READ_CONTACTS) })
-        } else {
-            requestPermissions(arrayOf(READ_CONTACTS), REQUEST_READ_CONTACTS)
-        }
-        return false
-    }
-
-    /**
-     * Callback received when a permissions request has been completed.
-     */
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,
-                                            grantResults: IntArray) {
-        if (requestCode == REQUEST_READ_CONTACTS) {
-            if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                populateAutoComplete()
-            }
-        }
     }
 
 
@@ -314,7 +278,6 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
                     if (task.isSuccessful) {
 
                         val intent = HomeActivity.getIntent(context)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
                     } else {
 
@@ -365,7 +328,7 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
                     if (task.isSuccessful) {
 
                         val intent = HomeActivity.getIntent(context)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        //intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
                     } else {
 
@@ -400,14 +363,14 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
 
     companion object {
 
-        /**
-         * Id to identity READ_CONTACTS permission request.
-         */
-        private val REQUEST_READ_CONTACTS = 0
-
         fun getIntent(context: Context) : Intent {
             val intent = Intent(context, LoginActivity::class.java)
             return intent
         }
+    }
+
+    override fun onBackPressed() {
+        Log.e("back", "·")
+        //super.onBackPressed()
     }
 }

@@ -120,6 +120,14 @@
     <string name="contacts_permissions_denied_forever">You have permanently disabled read contact permissions for this application.
         In order to enable them, please grant these permissions manually at Settings -> Apps -> Memeticame -> Permissions.</string>
 
+    <!-- Manejo de Sesión -->
+    <string name="logout">Logout</string>
+
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_home">HomeActivity</string>
+
+
+    <string name="checkedMark">"\u2713"</string>
+
+
 </resources>

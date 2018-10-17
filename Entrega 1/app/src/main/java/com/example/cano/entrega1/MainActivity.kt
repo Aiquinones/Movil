@@ -1,9 +1,11 @@
 package com.example.cano.entrega1
 
+import android.content.Intent
 import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.widget.Toast
+import com.google.firebase.auth.FirebaseAuth
 
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -13,14 +15,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        Toast.makeText(this, intent.getStringExtra("user"), Toast.LENGTH_SHORT).show()
+        val mAuth = FirebaseAuth.getInstance()
 
-        main_button.setOnClickListener{
-            startActivity(LoginActivity.getIntent(this))
+
+        val intent : Intent = when(mAuth.currentUser){
+            null -> LoginActivity.getIntent(this)
+            else -> HomeActivity.getIntent(this)
         }
 
+        //intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
+        startActivity(intent)
+
     }
-
-
-
 }

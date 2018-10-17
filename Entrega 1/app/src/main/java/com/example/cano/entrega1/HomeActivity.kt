@@ -1,30 +1,41 @@
 package com.example.cano.entrega1
 
+import android.app.ActionBar
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.PorterDuff
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.support.design.widget.FloatingActionButton
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.widget.Toolbar
 import android.support.v7.widget.DividerItemDecoration
 import android.support.v7.widget.LinearLayoutManager
+import android.util.Log
+import android.util.Log.e
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.Toast
 import com.example.cano.entrega1.FirebaseHelpers.FirebaseRoot
+import com.example.cano.entrega1.FirebaseHelpers.FirebaseRoot.addToken
 import com.example.cano.entrega1.FirebaseHelpers.FirebaseUtils
+import com.example.cano.entrega1.R.id.*
 import com.example.cano.entrega1.adapters.ContactsAdapter
 import com.example.cano.entrega1.model.AndroidContact
 import com.example.cano.entrega1.model.MyContact
 import com.example.cano.entrega1.tasks.ContactSetupTask
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.*
+import com.google.firebase.iid.FirebaseInstanceId
 
 
 import kotlinx.android.synthetic.main.activity_home.*
@@ -32,6 +43,8 @@ import kotlinx.android.synthetic.main.no_contact_permission.*
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
 import java.lang.ref.WeakReference
+import java.util.logging.Logger
+import kotlin.math.log
 
 class HomeActivity : Activity(), ContactsAdapter.ContactListener {
 
@@ -43,11 +56,17 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
     private val contactEventListener = ContactListener()
     private var firebaseContactsNode: DatabaseReference? = null
 
+    private var fabHeight : Int? = null
+    private var fabWidth : Int? = null
+
+    @Volatile private var contactsLoaded = false
+    @Volatile private var contactsLoadedFromAsync = false
+
+    private var mContext : Context? = null
 
 
     private val contactsPermissionGranted
         get() = checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
-
 
 
     companion object {
@@ -65,13 +84,30 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
         setContentView(R.layout.activity_home)
 
         mAuth = FirebaseAuth.getInstance()
+
+        val token= FirebaseInstanceId.getInstance().getToken()!!
+        addToken(mAuth.currentUser!!.email!!, token)
+
+        mContext = this
+
         contacts_list.layoutManager = LinearLayoutManager(this)
         val adapter = ContactsAdapter(this, chatContacts)
         adapter.listener = this
         contacts_list.adapter = adapter
         contacts_list.addItemDecoration(DividerItemDecoration(this, LinearLayout.VERTICAL))
 
+        toolbar.title = mAuth.currentUser!!.email
 
+        fabHeight = floatingMenu.layoutParams.height
+        fabWidth = floatingMenu.layoutParams.width
+
+        fabAddContact.setOnClickListener{
+            addContact()
+        }
+
+        fabLogout.setOnClickListener{
+            logout()
+        }
 
         configureWidgetVisibility()
         contacts_permission_button.setOnClickListener{requestContactsPermission()}
@@ -93,6 +129,30 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
 
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_home, menu)
+
+        for (i in 0.until(menu!!.size())) {
+            val icon: Drawable? = menu.getItem(i)!!.icon
+            if (icon != null) {
+                val drawable = icon.mutate()
+                drawable.setColorFilter(getColor(R.color.primary_dark_material_dark),
+                        PorterDuff.Mode.SRC_IN) //TODO: Choose color
+            }
+        }
+
+        return true
+    }
+
+    override fun onMenuItemSelected(featureId: Int, item: MenuItem?): Boolean {
+        item?.let {
+            when (it.itemId) {
+                R.id.action_logout -> logout()
+            }
+        }
+        return true
+    }
+
     private fun addContact() {
         val intent = Intent(Intent.ACTION_INSERT)
         intent.type = ContactsContract.Contacts.CONTENT_TYPE
@@ -101,14 +161,28 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
 
     override fun onContactSelected(contact: MyContact) {
         // TODO: start chat room with selected contact
+
+        val intent = ChatRoomActivity.getIntent(this)
+        intent.putExtra("email", contact.email)
+        intent.putExtra("name", contact.name)
+        startActivity(intent)
     }
 
     private fun configureWidgetVisibility() {
         if (contactsPermissionGranted) {
             contacts_list.visibility = View.VISIBLE
+            contacts_permission_button.visibility = View.GONE
             no_contact_permission_msg.visibility = View.GONE
+            floatingMenu.layoutParams.height = fabHeight!!
+            floatingMenu.layoutParams.width = fabWidth!!
+            floatingMenu.visibility = View.VISIBLE
         } else {
             contacts_list.visibility = View.GONE
+            floatingMenu.layoutParams.height = 0
+            floatingMenu.layoutParams.width = 0
+            floatingMenu.visibility = View.GONE
+
+            contacts_permission_button.visibility = View.VISIBLE
             no_contact_permission_msg.visibility = View.VISIBLE
         }
     }
@@ -140,7 +214,7 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
                     .setMessage(getString(R.string.contacts_permissions_denied_forever))
                     .setPositiveButton(getString(R.string.ok),  null)
                     .create()
-                    .show();
+                    .show()
         }
     }
 
@@ -154,9 +228,33 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
 
             firebaseContacts.addChildEventListener(contactEventListener)
 
+
             firebaseContactsNode = firebaseContacts
+
+            doAsync {
+                if (!contactsLoadedFromAsync) {
+                    contactsLoadedFromAsync = true
+
+                    firebaseContacts.addListenerForSingleValueEvent(LoadContactListener())
+
+                    uiThread {
+                        if (localContacts.isNotEmpty()) {
+                            contacts_list.adapter!!.notifyDataSetChanged()
+                        }
+                    }
+                }
+            }
+
         }
         setupTask.execute()
+    }
+
+    private fun logout() {
+        FirebaseAuth.getInstance().signOut()
+        val intent = LoginActivity.getIntent(this)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+        finish()
     }
 
     /**
@@ -175,9 +273,9 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
             doAsync {
                 //latch.await()
                 // For a MemeContact from Firebase to be added locally, it needs to appear on the android contact list and NOT appear on the cached contact list
-                val contact = localContacts.find { it.email != user.email && it.email == FirebaseUtils.decode(data.key!!) }
+                val contact = localContacts.find {it.email == FirebaseUtils.decode(data.key!!) }
                 if (contact != null && chatContacts.find { it.email == contact.email } == null) {
-                    val newContact = MyContact(contact.email, contact.name)
+                    val newContact = contact.getMyContact()
 
                     chatContacts.add(newContact)
 
@@ -199,6 +297,36 @@ class HomeActivity : Activity(), ContactsAdapter.ContactListener {
         override fun onCancelled(data: DatabaseError) {
             // TODO: implement
         }
+    }
+
+    inner class LoadContactListener: ValueEventListener {
+        override fun onDataChange(dataSnapshot: DataSnapshot) {
+            var toastText = "users:"
+            dataSnapshot.children.forEach{child ->
+
+                val contact = localContacts.find {it.email == FirebaseUtils.decode(child.key!!) }
+                if (contact != null && chatContacts.find { it.email == contact.email } == null) {
+                    val newContact = contact.getMyContact()
+                    chatContacts.add(newContact)
+                    toastText = "${toastText} | ${contact.name}"
+                }
+            }
+
+            //Toast.makeText(mContext, toastText, Toast.LENGTH_LONG).show()
+
+
+            if (localContacts.isNotEmpty()) { contacts_list.adapter!!.notifyDataSetChanged() }
+
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+            println("loadPost:onCancelled ${databaseError.toException()}")
+        }
+    }
+
+    override fun onBackPressed() {
+        Log.e("back", "·")
+        //super.onBackPressed()
     }
 
 }
